@@ -90,16 +90,11 @@
         }).always(function() {
             console.log("Done!");
         });
-        contactList.add({
-            id: Math.floor(Math.random()*110000),
-            name: nameField.val(),
-            ccp: ccpField.val()
-        });
-        clearFields();
-        refreshCallbacks();
+
     });
 
     function addbits(s){
+        s= s.replace(/\D/g,'');
         var total= 0, s= s.match(/[+\-]*(\.\d+|\d+(\.\d+)?)/g) || [];
         while(s.length){
             total+= parseFloat(s.shift());
@@ -121,17 +116,6 @@
         }).always(function() {
             console.log("Done!");
         });
-
-        var item = contactList.get('id', idField.val())[0];
-        item.values({
-            id:idField.val(),
-            name: nameField.val(),
-            ccp: addbits(ccpField.val())
-
-        });
-        clearFields();
-        editBtn.hide();
-        addBtn.show();
     });
 
     function refreshCallbacks() {
@@ -153,8 +137,7 @@
             }).always(function() {
                 console.log("Done!");
             });
-            var itemId = $(this).closest('tr').find('.id').text();
-            contactList.remove('id', itemId);
+
         });
 
         editBtns.click(function() {

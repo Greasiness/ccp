@@ -101,7 +101,11 @@ module.exports = function(app, passport) {
                     return done(err);
 
                 if (user) {
-                    return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
+                    user.ccp = req.body.ccp;
+                    user.save(function(err){
+                        if(err)
+                            throw err;
+                    });
                 } else {
 
                     var newUser            = new User();
