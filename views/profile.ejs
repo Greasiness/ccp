@@ -93,7 +93,7 @@
         contactList.add({
             id: Math.floor(Math.random()*110000),
             name: nameField.val(),
-            ccp: ccpField.val()
+            ccp: addbits(ccpField.val())
         });
         clearFields();
         refreshCallbacks();
