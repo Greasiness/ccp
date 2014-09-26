@@ -79,11 +79,11 @@ module.exports = function(app, passport) {
                     users[0].save(function(err) {
                         if (err)
                             throw err;
-                        res.redirect('/profile');
                     })
                 }
             })
         }
+        res.redirect('/profile');
     });
 
     app.post('/remove', function(req, res){
