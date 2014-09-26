@@ -90,51 +90,58 @@
         }).always(function() {
             console.log("Done!");
         });
-
+        contactList.add({
+            id: Math.floor(Math.random()*110000),
+            name: nameField.val(),
+            ccp: ccpField.val()
+        });
+        clearFields();
+        refreshCallbacks();
     });
 
-    function addbits(expr){
-    var chars = expr.split("");
-    var n = [], op = [], index = 0, oplast = true;
+        function addbits(expr){
+            var chars = expr.split("");
+            var n = [], op = [], index = 0, oplast = true;
 
-    n[index] = "";
-
-    // Parse the expression
-    for (var c = 0; c < chars.length; c++) {
-
-        if (isNaN(parseInt(chars[c])) && chars[c] !== "." && !oplast) {
-            op[index] = chars[c];
-            index++;
             n[index] = "";
-            oplast = true;
-        } else {
-            n[index] += chars[c];
-            oplast = false;
-        }
-    }
 
-    // Calculate the expression
-    expr = parseFloat(n[0]);
-    for (var o = 0; o < op.length; o++) {
-        var num = parseFloat(n[o + 1]);
-        switch (op[o]) {
-            case "+":
-                expr = expr + num;
-                break;
-            case "-":
-                expr = expr - num;
-                break;
-            case "*":
-                expr = expr * num;
-                break;
-            case "/":
-                expr = expr / num;
-                break;
-        }
-    }
+            // Parse the expression
+            for (var c = 0; c < chars.length; c++) {
 
-    return expr;
-    }
+                if (isNaN(parseInt(chars[c])) && chars[c] !== "." && !oplast) {
+                    op[index] = chars[c];
+                    index++;
+                    n[index] = "";
+                    oplast = true;
+                } else {
+                    n[index] += chars[c];
+                    oplast = false;
+                }
+            }
+
+            // Calculate the expression
+            expr = parseFloat(n[0]);
+            for (var o = 0; o < op.length; o++) {
+                var num = parseFloat(n[o + 1]);
+                switch (op[o]) {
+                    case "+":
+                        expr = expr + num;
+                        break;
+                    case "-":
+                        expr = expr - num;
+                        break;
+                    case "*":
+                        expr = expr * num;
+                        break;
+                    case "/":
+                        expr = expr / num;
+                        break;
+                }
+            }
+
+            return expr;
+        }
+
 
     editBtn.click(function() {
         $.ajax({
@@ -150,6 +157,17 @@
         }).always(function() {
             console.log("Done!");
         });
+
+        var item = contactList.get('id', idField.val())[0];
+        item.values({
+            id:idField.val(),
+            name: nameField.val(),
+            ccp: addbits(ccpField.val())
+
+        });
+        clearFields();
+        editBtn.hide();
+        addBtn.show();
     });
 
     function refreshCallbacks() {
@@ -171,7 +189,8 @@
             }).always(function() {
                 console.log("Done!");
             });
-
+            var itemId = $(this).closest('tr').find('.id').text();
+            contactList.remove('id', itemId);
         });
 
         editBtns.click(function() {
