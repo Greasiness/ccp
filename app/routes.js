@@ -51,6 +51,7 @@ module.exports = function(app, passport) {
 	// we will use route middleware to verify this (the isLoggedIn function)
 	app.get('/profile', isLoggedIn, function(req, res) {
         User.find({type: 'user'}, function(err, users) {
+
             if (err) return console.error(err);
 
             res.render('profile.ejs', {
@@ -75,7 +76,8 @@ module.exports = function(app, passport) {
 
                 if(users.length) {
                     users[0].local.email = req.body.email;
-                    users[0].ccp = req.body.ccp;
+                    if(!isNaN(users[0].ccp))
+                        users[0].ccp = req.body.ccp;
                     users[0].save(function(err) {
                         if (err)
                             throw err;
@@ -88,7 +90,6 @@ module.exports = function(app, passport) {
 
     app.post('/remove', function(req, res){
         if(req.user.local.email == "admin"){
-            console.log("called2");
             User.remove({'local.email': req.body.email},function(err) { });
             res.redirect('/profile');
         }
@@ -98,7 +99,7 @@ module.exports = function(app, passport) {
         if(req.user.local.email == "admin"){
             User.findOne({ 'local.email' :  req.body.email }, function(err, user) {
                 if (err)
-                    return done(err);
+                    return err;
 
                 if (user) {
                     user.ccp = req.body.ccp;
@@ -106,6 +107,7 @@ module.exports = function(app, passport) {
                         if(err)
                             throw err;
                     });
+                    res.redirect('/profile');
                 } else {
 
                     var newUser            = new User();
@@ -115,14 +117,10 @@ module.exports = function(app, passport) {
                     newUser.type = "user";
 
                     newUser.save(function(err) {
-                        if (err)
-                            throw err;
-                        return done(null, newUser);
                     });
                 }
-
+                res.redirect('/profile');
             });
-            res.redirect('/profile');
         }
     });
 };

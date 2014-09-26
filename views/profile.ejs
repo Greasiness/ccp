@@ -22,7 +22,7 @@
             <th class="sort" data-sort="name">Name</th>
             <th class="sort" data-sort="cpp">ccp</th>
             <th colspan="2">
-                <input type="text" class="search" placeholder="Search contact" />
+                <input type="text" class="search" placeholder="Search by name or ccp" />
             </th>
         </tr>
         </thead>
@@ -58,6 +58,14 @@
 </div>
 </body>
 <script>
+
+    $('body').on('keypress', 'input', function(args) {
+        if (args.keyCode == 13) {
+            $("#add-btn").click();
+            return false;
+        }
+    });
+
     var options = {
         valueNames: [ 'id', 'name', 'ccp']
     };
@@ -77,6 +85,7 @@
     refreshCallbacks();
 
     addBtn.click(function() {
+
         $.ajax({
             url: '/add',
             type: 'POST',
@@ -90,11 +99,19 @@
         }).always(function() {
             console.log("Done!");
         });
-        contactList.add({
-            id: Math.floor(Math.random()*110000),
-            name: nameField.val(),
-            ccp: addbits(ccpField.val())
-        });
+
+        if(contactList.get("name", nameField.val())[0] === null || contactList.get("name", nameField.val())[0] === undefined)
+        {
+            contactList.add({
+                id: Math.floor(Math.random() * 110000),
+                name: nameField.val(),
+                ccp: addbits(ccpField.val())
+            });
+        } else {
+            var item = contactList.get("name", nameField.val())[0];
+            item.values({ccp: addbits(ccpField.val())});
+        }
+
         clearFields();
         refreshCallbacks();
     });
@@ -144,6 +161,7 @@
 
 
     editBtn.click(function() {
+
         $.ajax({
             url: '/submit',
             type: 'POST',
@@ -168,6 +186,12 @@
         clearFields();
         editBtn.hide();
         addBtn.show();
+        $('body').on('keypress', 'input', function(args) {
+            if (args.keyCode == 13) {
+                $("#add-btn").click();
+                return false;
+            }
+        });
     });
 
     function refreshCallbacks() {
@@ -202,6 +226,12 @@
 
             editBtn.show();
             addBtn.hide();
+            $('body').on('keypress', 'input', function(args) {
+                if (args.keyCode == 13) {
+                    $("#edt-btn").click();
+                    return false;
+                }
+            });
         });
     }
 
