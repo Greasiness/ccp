@@ -95,6 +95,27 @@ module.exports = function(app, passport) {
         }
     });
 
+    app.post('/update', function(req, res){
+        if(req.user.local.email == "admin"){
+            User.remove({type: "user"},function(err) { });
+            var csv = req.body.csv;
+            var multiline = csv.split(/[\n\r\n]/g);
+            multiline.forEach(function (line) {
+                var lineKV = line.split(',');
+                if (lineKV.length == 2) {
+                    var newUser            = new User();
+                    console.log(lineKV[0]);
+                    console.log(lineKV[1]);
+                    newUser.local.email    = lineKV[0];
+                    newUser.ccp = lineKV[1];
+                    newUser.type = "user";
+                    newUser.save(function(err) {});
+                }
+            });
+        }
+        res.redirect('profile');
+    });
+
     app.post('/add', function(req, res){
         if(req.user.local.email == "admin"){
             User.findOne({ 'local.email' :  req.body.email }, function(err, user) {
@@ -116,8 +137,7 @@ module.exports = function(app, passport) {
                     newUser.ccp = req.body.ccp;
                     newUser.type = "user";
 
-                    newUser.save(function(err) {
-                    });
+                    newUser.save(function(err) {});
                 }
                 res.redirect('/profile');
             });

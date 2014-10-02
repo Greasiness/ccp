@@ -12,6 +12,13 @@
         table td, table th {
             padding:5px;
         }
+
+        #csvcontainer {
+            float:left;
+        }
+        #contacts {
+            float:left;
+        }
     </style>
 </head>
 <body>
@@ -27,9 +34,20 @@
         </tr>
         </thead>
         <tbody class="list">
+        <tr>
+            <td class="id" style="display:none;">0</td>
+            <td class="name">dummy</td>
+            <td class="ccp">100</td>
+            <td class="edit"><button class="edit-item-btn">Edit</button></td>
+            <td class="remove"><button class="remove-item-btn">Remove</button></td>
+        </tr>
         <% if(users.length) {
                 var counter = 0;
-                users.forEach(function(user){ counter++; %>
+                var csvArray = new Array();
+                users.forEach(function(user){
+                    counter++;
+                    csvArray.push(user.local.email);
+        %>
         <tr>
             <td class="id" style="display:none;"><%= counter %></td>
             <td class="name"><%= user.local.email %></td>
@@ -53,11 +71,21 @@
             <button id="edit-btn">Edit</button>
         </td>
     </table>
+</div>
 
-
+<div id = "csvcontainer">
+    <textarea id = "csvtext" cols = "50" spellcheck="false"></textarea>
+    <button id="update-btn">Batch Update</button>
 </div>
 </body>
 <script>
+
+    var nameString = "<%= csvArray %>"
+
+    var nameArray;
+    if(nameString)
+        nameArray = nameString.split(',');
+    var nameCCPArray = new Array();
 
     $('body').on('keypress', 'input', function(args) {
         if (args.keyCode == 13) {
@@ -66,12 +94,22 @@
         }
     });
 
+
     var options = {
         valueNames: [ 'id', 'name', 'ccp']
     };
 
+
     // Init list
     var contactList = new List('contacts', options);
+
+    contactList.remove('name', 'dummy');
+
+        nameArray.forEach(function(name){
+            if(contactList.get('name', name)[0])
+                 nameCCPArray[name] = contactList.get('name', name)[0].values().ccp;
+        });
+
 
     var idField = $('#id-field'),
             nameField = $('#name-field'),
@@ -79,10 +117,49 @@
             addBtn = $('#add-btn'),
             editBtn = $('#edit-btn').hide(),
             removeBtns = $('.remove-item-btn'),
-            editBtns = $('.edit-item-btn');
+            editBtns = $('.edit-item-btn'),
+            updateBtn= $('#update-btn');
 
     // Sets callbacks to the buttons in the list
     refreshCallbacks();
+
+    updateBtn.click(function() {
+        contactList.clear();
+        nameCCPArray = {};
+        var csv = $('#csvtext').val();
+        var multiline = csv.split(/[\n\r\n]/g);
+        multiline.forEach(function (line) {
+            var lineKV = line.split(',');
+            if (lineKV.length == 2) {
+                nameCCPArray[lineKV[0]] = lineKV[1];
+                contactList.add({
+                    id: Math.floor(Math.random() * 110000),
+                    name: lineKV[0],
+                    ccp: addbits(lineKV[1])
+                });
+            }
+        });
+
+        $.ajax({
+            url: '/update',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({csv: csv})
+    }).done(function (data, textStatus, jqXHR) {
+        console.log("Success: " + data);
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+        console.log("Error: " + errorThrown);
+    }).always(function () {
+        console.log("Done!");
+    });
+
+    clearFields();
+    refreshCallbacks();
+    refreshCSV();
+    resizeTextarea();
+
+    });
 
     addBtn.click(function() {
 
@@ -107,13 +184,18 @@
                 name: nameField.val(),
                 ccp: addbits(ccpField.val())
             });
+            nameCCPArray[nameField.val()] =  addbits(ccpField.val());
+
         } else {
             var item = contactList.get("name", nameField.val())[0];
             item.values({ccp: addbits(ccpField.val())});
+            nameCCPArray[nameField.val()] = addbits(ccpField.val());
         }
 
         clearFields();
         refreshCallbacks();
+        refreshCSV();
+        resizeTextarea();
     });
 
         function addbits(expr){
@@ -183,6 +265,9 @@
             ccp: addbits(ccpField.val())
 
         });
+
+        nameCCPArray[nameField.val()] = addbits(ccpField.val());
+
         clearFields();
         editBtn.hide();
         addBtn.show();
@@ -192,10 +277,11 @@
                 return false;
             }
         });
+
+        refreshCSV();
     });
 
     function refreshCallbacks() {
-        // Needed to add new buttons to jQuery-extended object
         removeBtns = $(removeBtns.selector);
         editBtns = $(editBtns.selector);
 
@@ -215,6 +301,9 @@
             });
             var itemId = $(this).closest('tr').find('.id').text();
             contactList.remove('id', itemId);
+            delete nameCCPArray[$(this).closest('tr').find('.name').text()];
+            refreshCSV();
+            resizeTextarea();
         });
 
         editBtns.click(function() {
@@ -239,5 +328,30 @@
         nameField.val('');
         ccpField.val('');
     }
+
+    function refreshCSV(){
+        var csv = ""
+
+        for(var key in nameCCPArray){
+            csv+=key;
+            csv+=',';
+            csv+=nameCCPArray[key];
+            csv+='\n';
+        }
+        $('#csvtext').val(csv)
+    }
+
+    function resizeTextarea() {
+        var str = $('#csvtext').val();
+        var strArray = str.split('\n');
+        var linecount = strArray.length+1;
+        $('#csvtext').attr('rows', linecount);
+
+    };
+
+    refreshCSV();
+    resizeTextarea();
+
+
 </script>
 </html>
