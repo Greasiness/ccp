@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+    <script src="http://listjs.com/no-cdn/list.js"></script>
+    <meta charset=utf-8 />
+    <title>Existing list</title>
+    <style>
+        body {
+            font-family:sans-serif;
+        }
+        table td, table th {
+            padding:5px;
+        }
+
+        #csvcontainer {
+            float:left;
+        }
+        #items {
+            float:left;
+        }
+        #users {
+            float:left;
+        }
+        #auction {
+            float:left;
+        }
+        .bold {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<button id="users">Users</button>
+<button id="auction">Auction</button>
+<div id="items">
+    <table>
+        <thead>
+        <tr>
+            <th class="sort" data-sort="name">Name</th>
+            <th class="sort" data-sort="cpp">ccp</th>
+            <th class="sort" data-sort="description">description</th>
+            <th class="sort" data-sort="quantity">quantity</th>
+            <th colspan="2">
+                <input type="text" class="search" placeholder="Search by name, ccp, or description" />
+            </th>
+        </tr>
+        </thead>
+        <tbody class="list">
+        <tr>
+            <td class="id" style="display:none;">0</td>
+            <td class="name">dummy</td>
+            <td class="ccp">100</td>
+            <td class="description">100</td>
+            <td class="quantity">100</td>
+            <td class="start"><button class="start-item-btn">Start</button></td>
+            <td class="stop"><button class="stop-item-btn">Stop</button></td>
+            <td class="edit"><button class="edit-item-btn">Edit</button></td>
+            <td class="remove"><button class="remove-item-btn">Remove</button></td>
+        </tr>
+        <% if(items.length) {
+            var counter = 0;
+                items.forEach(function(item){
+            counter++;
+        %>
+        <tr <% if(item.active == true){ %> style="font-weight:bold" <% } %>>
+            <td class="id" style="display:none;"><%= counter %></td>
+            <td class="name"><%= item.name %></td>
+            <td class="ccp"><%= item.ccp %></td>
+            <td class="description"><%= item.description %></td>
+            <td class="quantity"><%= item.quantity %></td>
+            <td class="start"><button class="start-item-btn">Start</button></td>
+            <td class="stop"><button class="stop-item-btn">Stop</button></td>
+            <td class="edit"><button class="edit-item-btn">Edit</button></td>
+            <td class="remove"><button class="remove-item-btn">Remove</button></td>
+        </tr>
+        <% }) } %>
+        </tbody>
+    </table>
+    <table>
+        <td class="name">
+            <input type="hidden" id="id-field" />
+            <input type="text" id="name-field" placeholder="Name" />
+        </td>
+        <td class="ccp">
+            <input type="text" id="ccp-field" placeholder="ccp" />
+        </td>
+        <td class="description">
+            <input type="text" id="description-field" placeholder="description" />
+        </td>
+        <td class="quantity">
+            <input type="text" id="quantity-field" placeholder="quantity" />
+        </td>
+        <td class="add">
+            <button id="add-btn">Add</button>
+            <button id="edit-btn">Edit</button>
+        </td>
+    </table>
+</div>
+
+<div id = "csvcontainer">
+    <textarea id = "changelog" cols = "75" spellcheck="false" readonly rows="20"></textarea>
+</div>
+
+</body>
+<script>
+
+
+$('body').on('keypress', 'input', function(args) {
+    if (args.keyCode == 13) {
+        $("#add-btn").click();
+        return false;
+    }
+});
+
+
+var options = {
+    valueNames: [ 'id', 'name', 'ccp', 'description', 'quantity']
+};
+
+
+// Init list
+var contactList = new List('items', options);
+
+contactList.remove('name', 'dummy');
+
+var idField = $('#id-field'),
+        nameField = $('#name-field'),
+        ccpField = $('#ccp-field'),
+        descriptionField = $('#description-field'),
+        quantityField = $('#quantity-field'),
+        addBtn = $('#add-btn'),
+        editBtn = $('#edit-btn').hide(),
+        removeBtns = $('.remove-item-btn'),
+        startBtns = $(".start-item-btn"),
+        stopBtns = $(".stop-item-btn"),
+        editBtns = $('.edit-item-btn'),
+        updateBtn= $('#update-btn'),
+        usersBtn = $('#users'),
+        auctionBtn = $('#auction');
+
+// Sets callbacks to the buttons in the list
+refreshCallbacks();
+
+usersBtn.click(function(){
+    window.location.href='/profile';
+    return false;
+});
+
+updateBtn.click(function() {
+    contactList.clear();
+    var csv = $('#csvtext').val();
+    var multiline = csv.split(/[\n\r\n]/g);
+    multiline.forEach(function (line) {
+        var lineKV = line.split(',');
+        if (lineKV.length == 4) {
+            contactList.add({
+                id: Math.floor(Math.random() * 110000),
+                name: lineKV[0],
+                ccp: addbits(lineKV[1]),
+                description: lineKV[2],
+                quantity: addbits(lineKV[3])
+            });
+        }
+    });
+
+    $.ajax({
+        url: '/updatestore',
+        type: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({csv: csv})
+    }).done(function (data, textStatus, jqXHR) {
+        console.log("Success: " + data);
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+        console.log("Error: " + errorThrown);
+    }).always(function () {
+        console.log("Done!");
+    });
+
+    clearFields();
+    refreshCallbacks();
+    refreshChangelog();
+
+});
+
+addBtn.click(function() {
+
+    $.ajax({
+        url: '/addstore',
+        type: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({name: nameField.val(), ccp: addbits(ccpField.val()), description: descriptionField.val(), quantity: addbits(quantityField.val()) })
+    }).done(function(data, textStatus, jqXHR) {
+        console.log("Success: " + data);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("Error: " + errorThrown);
+    }).always(function() {
+        console.log("Done!");
+    });
+
+    if(contactList.get("name", nameField.val())[0] === null || contactList.get("name", nameField.val())[0] === undefined)
+    {
+        contactList.add({
+            id: Math.floor(Math.random() * 110000),
+            name: nameField.val(),
+            ccp: addbits(ccpField.val()),
+            description: descriptionField.val(),
+            quantity: addbits(quantityField.val())
+        });
+
+    } else {
+        var item = contactList.get("name", nameField.val())[0];
+        item.values({ccp: addbits(ccpField.val()), description: descriptionField.val(), quantity: addbits(quantityField.val())});
+
+    }
+
+
+    clearFields();
+    refreshCallbacks();
+    refreshChangelog();
+    location.reload(true);
+
+});
+
+function addbits(expr){
+    var chars = expr.split("");
+    var n = [], op = [], index = 0, oplast = true;
+
+    n[index] = "";
+
+    // Parse the expression
+    for (var c = 0; c < chars.length; c++) {
+
+        if (isNaN(parseInt(chars[c])) && chars[c] !== "." && !oplast) {
+            op[index] = chars[c];
+            index++;
+            n[index] = "";
+            oplast = true;
+        } else {
+            n[index] += chars[c];
+            oplast = false;
+        }
+    }
+
+    // Calculate the expression
+    expr = parseFloat(n[0]);
+    for (var o = 0; o < op.length; o++) {
+        var num = parseFloat(n[o + 1]);
+        switch (op[o]) {
+            case "+":
+                expr = expr + num;
+                break;
+            case "-":
+                expr = expr - num;
+                break;
+            case "*":
+                expr = expr * num;
+                break;
+            case "/":
+                expr = expr / num;
+                break;
+        }
+    }
+
+    return expr;
+}
+
+
+editBtn.click(function() {
+
+    $.ajax({
+        url: '/addstore',
+        type: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({name: nameField.val(), ccp: addbits(ccpField.val()), description: descriptionField.val(), quantity: addbits(quantityField.val()) })
+    }).done(function(data, textStatus, jqXHR) {
+        console.log("Success: " + data);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("Error: " + errorThrown);
+    }).always(function() {
+        console.log("Done!");
+    });
+
+    var item = contactList.get('id', idField.val())[0];
+    item.values({
+        id:idField.val(),
+        name: nameField.val(),
+        ccp: addbits(ccpField.val()),
+        description: descriptionField.val(),
+        quantity: addbits(quantityField.val())
+
+    });
+
+
+    clearFields();
+    editBtn.hide();
+    addBtn.show();
+    $('body').on('keypress', 'input', function(args) {
+        if (args.keyCode == 13) {
+            $("#add-btn").click();
+            return false;
+        }
+    });
+
+    refreshChangelog();
+});
+
+function refreshCallbacks() {
+    removeBtns = $(removeBtns.selector);
+    editBtns = $(editBtns.selector);
+    startBtns = $(startBtns.selector);
+    stopBtns = $(stopBtns.selector);
+
+    removeBtns.click(function() {
+        $.ajax({
+            url: '/removestore',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({name: $(this).closest('tr').find('.name').text()})
+        }).done(function(data, textStatus, jqXHR) {
+            console.log("Success: " + data);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Error: " + errorThrown);
+        }).always(function() {
+            console.log("Done!");
+        });
+        var itemId = $(this).closest('tr').find('.id').text();
+        contactList.remove('id', itemId);
+
+        refreshChangelog();
+    });
+
+    startBtns.click(function() {
+        $.ajax({
+            url: '/startstore',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({name: $(this).closest('tr').find('.name').text()})
+        }).done(function(data, textStatus, jqXHR) {
+            console.log("Success: " + data);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Erro1r: " + errorThrown);
+        }).always(function() {
+            console.log("Done!");
+        });
+
+        $(this).closest('tr').css('font-weight', 'bold');
+        refreshChangelog();
+        refreshChangelog();
+    });
+
+    stopBtns.click(function(){
+        $.ajax({
+            url: '/stopstore',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({name: $(this).closest('tr').find('.name').text()})
+        }).done(function(data, textStatus, jqXHR) {
+            console.log("Success: " + data);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Error: " + errorThrown);
+        }).always(function() {
+            console.log("Done!");
+        });
+
+        $(this).closest('tr').css('font-weight', 'normal');
+        refreshChangelog();
+        refreshChangelog();
+    })
+
+    removeBtns.click(function() {
+        $.ajax({
+            url: '/removestore',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({name: $(this).closest('tr').find('.name').text()})
+        }).done(function(data, textStatus, jqXHR) {
+            console.log("Success: " + data);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Error: " + errorThrown);
+        }).always(function() {
+            console.log("Done!");
+        });
+        var itemId = $(this).closest('tr').find('.id').text();
+        contactList.remove('id', itemId);
+        refreshChangelog();
+    });
+
+    editBtns.click(function() {
+        var itemId = $(this).closest('tr').find('.id').text();
+        var itemValues = contactList.get('id', itemId)[0].values();
+        idField.val(itemValues.id);
+        nameField.val(itemValues.name);
+        ccpField.val(itemValues.ccp);
+        descriptionField.val(itemValues.description);
+        quantityField.val(itemValues.quantity);
+
+        editBtn.show();
+        addBtn.hide();
+        $('body').on('keypress', 'input', function(args) {
+            if (args.keyCode == 13) {
+                $("#edt-btn").click();
+                return false;
+            }
+        });
+    });
+}
+
+function clearFields() {
+    nameField.val('');
+    ccpField.val('');
+    descriptionField.val('');
+    quantityField.val('');
+}
+
+function refreshChangelog(){
+    $.ajax({
+        url: '/getchangelog',
+        type: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({type: 'store'})
+    }).done(function(data, textStatus, jqXHR) {
+        $('#changelog').val(data.changelog);
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+        console.log("Error: " + errorThrown);
+    }).always(function(data) {
+    });
+}
+
+
+refreshChangelog();
+$("#changelog").animate({
+    scrollTop: 100
+},1000,function(){
+})
+
+</script>
+</html>

@@ -19,17 +19,30 @@
         #contacts {
             float:left;
         }
+
+        #store {
+            float:left;
+        }
+
+        #auction {
+            float:left;
+        }
     </style>
 </head>
 <body>
+
+<button id="store">Store</button>
+<button id="auction">Auction</button>
+
 <div id="contacts">
     <table>
         <thead>
         <tr>
             <th class="sort" data-sort="name">Name</th>
+            <th class="sort" data-sort="email">email</th>
             <th class="sort" data-sort="cpp">ccp</th>
             <th colspan="2">
-                <input type="text" class="search" placeholder="Search by name or ccp" />
+                <input type="text" class="search" placeholder="Search by name or email" />
             </th>
         </tr>
         </thead>
@@ -37,20 +50,23 @@
         <tr>
             <td class="id" style="display:none;">0</td>
             <td class="name">dummy</td>
+            <td class="email">dummy</td>
             <td class="ccp">100</td>
             <td class="edit"><button class="edit-item-btn">Edit</button></td>
             <td class="remove"><button class="remove-item-btn">Remove</button></td>
         </tr>
         <% if(users.length) {
+                console.log("in here");
                 var counter = 0;
                 var csvArray = new Array();
                 users.forEach(function(user){
                     counter++;
-                    csvArray.push(user.local.email);
+                    csvArray.push(user.name);
         %>
         <tr>
             <td class="id" style="display:none;"><%= counter %></td>
-            <td class="name"><%= user.local.email %></td>
+            <td class="name"><%= user.name%></td>
+            <td class="email"><%= user.email%></td>
             <td class="ccp"><%= user.ccp %></td>
             <td class="edit"><button class="edit-item-btn">Edit</button></td>
             <td class="remove"><button class="remove-item-btn">Remove</button></td>
@@ -62,6 +78,9 @@
         <td class="name">
             <input type="hidden" id="id-field" />
             <input type="text" id="name-field" placeholder="Name" />
+        </td>
+        <td class="email">
+            <input type="text" id="email-field" placeholder="email" />
         </td>
         <td class="ccp">
             <input type="text" id="ccp-field" placeholder="ccp" />
@@ -77,6 +96,7 @@
     <textarea id = "csvtext" cols = "50" spellcheck="false"></textarea>
     <button id="update-btn">Batch Update</button>
 </div>
+
 </body>
 <script>
 
@@ -96,7 +116,7 @@
 
 
     var options = {
-        valueNames: [ 'id', 'name', 'ccp']
+        valueNames: [ 'id', 'name','email', 'ccp']
     };
 
 
@@ -107,21 +127,31 @@
 
         nameArray.forEach(function(name){
             if(contactList.get('name', name)[0])
-                 nameCCPArray[name] = contactList.get('name', name)[0].values().ccp;
+                nameCCPArray.push({name: name, email: contactList.get('name', name)[0].values().email, ccp: contactList.get('name', name)[0].values().ccp});
+
         });
 
 
     var idField = $('#id-field'),
             nameField = $('#name-field'),
+            emailField = $('#email-field'),
             ccpField = $('#ccp-field'),
             addBtn = $('#add-btn'),
             editBtn = $('#edit-btn').hide(),
             removeBtns = $('.remove-item-btn'),
             editBtns = $('.edit-item-btn'),
-            updateBtn= $('#update-btn');
+            updateBtn= $('#update-btn'),
+            storeBtn=$('#store'),
+            auctionBtn=$("#auction");
+
 
     // Sets callbacks to the buttons in the list
     refreshCallbacks();
+
+    storeBtn.click(function(){
+        window.location.href='/profilestore';
+        return false;
+    });
 
     updateBtn.click(function() {
         contactList.clear();
@@ -130,12 +160,13 @@
         var multiline = csv.split(/[\n\r\n]/g);
         multiline.forEach(function (line) {
             var lineKV = line.split(',');
-            if (lineKV.length == 2) {
+            if (lineKV.length == 3) {
                 nameCCPArray[lineKV[0]] = lineKV[1];
                 contactList.add({
                     id: Math.floor(Math.random() * 110000),
                     name: lineKV[0],
-                    ccp: addbits(lineKV[1])
+                    email: lineKV[1],
+                    ccp: addbits(lineKV[2])
                 });
             }
         });
@@ -168,7 +199,7 @@
             type: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
-            data: JSON.stringify({email: nameField.val(), ccp: addbits(ccpField.val()) })
+            data: JSON.stringify({ name: nameField.val(), email: emailField.val(), ccp: addbits(ccpField.val()) })
         }).done(function(data, textStatus, jqXHR) {
             console.log("Success: " + data);
         }).fail(function(jqXHR, textStatus, errorThrown) {
@@ -182,15 +213,26 @@
             contactList.add({
                 id: Math.floor(Math.random() * 110000),
                 name: nameField.val(),
+                email: emailField.val(),
                 ccp: addbits(ccpField.val())
             });
-            nameCCPArray[nameField.val()] =  addbits(ccpField.val());
+
+            nameCCPArray.push({name:nameField.val(), email:emailField.val(),ccp: addbits(ccpField.val())});
 
         } else {
             var item = contactList.get("name", nameField.val())[0];
             item.values({ccp: addbits(ccpField.val())});
-            nameCCPArray[nameField.val()] = addbits(ccpField.val());
+            nameCCPArray.push({name:nameField.val(), email:emailField.val(),ccp: addbits(ccpField.val())});
+
+            for(var i = 0; i < nameCCPArray.length; ++i){
+                if(nameCCPArray[i].name == nameField.val()){
+                    nameCCPArray[i].ccp = addbits(ccpField.val());
+                    nameCCPArray[i].email = emailField.val();
+                }
+            }
         }
+
+        nameField.attr("disabled", false);
 
         clearFields();
         refreshCallbacks();
@@ -249,7 +291,7 @@
             type: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
-            data: JSON.stringify({email: nameField.val(), ccp: addbits(ccpField.val()) })
+            data: JSON.stringify({name: nameField.val(), email:emailField.val(),ccp: addbits(ccpField.val()) })
         }).done(function(data, textStatus, jqXHR) {
             console.log("Success: " + data);
         }).fail(function(jqXHR, textStatus, errorThrown) {
@@ -261,16 +303,24 @@
         var item = contactList.get('id', idField.val())[0];
         item.values({
             id:idField.val(),
-            name: nameField.val(),
+            email:emailField.val(),
             ccp: addbits(ccpField.val())
 
         });
 
-        nameCCPArray[nameField.val()] = addbits(ccpField.val());
+        for(var i = 0; i < nameCCPArray.length; ++i){
+            if(nameCCPArray[i].name == nameField.val()){
+                nameCCPArray[i].ccp = addbits(ccpField.val());
+                nameCCPArray[i].email = emailField.val();
+            }
+        }
 
         clearFields();
         editBtn.hide();
         addBtn.show();
+
+        nameField.attr("disabled", false);
+
         $('body').on('keypress', 'input', function(args) {
             if (args.keyCode == 13) {
                 $("#add-btn").click();
@@ -291,7 +341,7 @@
                 type: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
-                data: JSON.stringify({email: $(this).closest('tr').find('.name').text()})
+                data: JSON.stringify({name: $(this).closest('tr').find('.name').text()})
             }).done(function(data, textStatus, jqXHR) {
                 console.log("Success: " + data);
             }).fail(function(jqXHR, textStatus, errorThrown) {
@@ -302,6 +352,9 @@
             var itemId = $(this).closest('tr').find('.id').text();
             contactList.remove('id', itemId);
             delete nameCCPArray[$(this).closest('tr').find('.name').text()];
+
+            nameField.attr("disabled", false);
+
             refreshCSV();
             resizeTextarea();
         });
@@ -311,6 +364,8 @@
             var itemValues = contactList.get('id', itemId)[0].values();
             idField.val(itemValues.id);
             nameField.val(itemValues.name);
+            nameField.attr("disabled", true);
+            emailField.val(itemValues.email);
             ccpField.val(itemValues.ccp);
 
             editBtn.show();
@@ -327,15 +382,18 @@
     function clearFields() {
         nameField.val('');
         ccpField.val('');
+        emailField.val('');
     }
 
     function refreshCSV(){
         var csv = ""
 
-        for(var key in nameCCPArray){
-            csv+=key;
+        for(var i = 0; i < nameCCPArray.length; ++i){
+            csv+=nameCCPArray[i].name;
             csv+=',';
-            csv+=nameCCPArray[key];
+            csv+=nameCCPArray[i].email;
+            csv+=',';
+            csv+=nameCCPArray[i].ccp;
             csv+='\n';
         }
         $('#csvtext').val(csv)

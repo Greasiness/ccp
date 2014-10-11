@@ -10,7 +10,10 @@ var userSchema = mongoose.Schema({
         email        : String,
         password     : String
     },
+    name: String,
+    email: String,
     type: String,
+    UUID: String,
     ccp: Number
 });
 
