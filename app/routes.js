@@ -1,10 +1,14 @@
 // app/routes.js
 module.exports = function(app, passport) {
 
+
     var User       		= require('../app/models/user');
     var Item = require('../app/models/item');
     var Changelog = require('../app/models/changelog');
     var validator = require('validator');
+
+    var sendgrid   = require('sendgrid')('app18634011@heroku.com', 'p7uxpdmk');
+  
 
 	// =====================================
 	// HOME PAGE (with login links) ========
